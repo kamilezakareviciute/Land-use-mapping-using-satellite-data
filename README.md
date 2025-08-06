@@ -37,9 +37,60 @@ batch.Download.ImageCollection.toDrive(ndvi,'Folder',
 
 Raster images are inspected for errors and cloud impacts. If inspection passed .TIFF format images are worked in ArcGis Pro to extract NDVI data from raster to point. Raster to Multipoint funtion was applied to create one csv file, containing NDVI values for each point covering 10m grid. Columns contain date of observation and rows pointID. Data set was seperated for machine learning model training and data used for classification. Training sample is extracted from NDVI contains known landuse classes: deciduous trees, evergreen trees, grass, urbanised fabric and water bodies. 
 
-#Decision tree model desription 
+#Data for decision tree model is located in zip "NDVI data for model". Location of the files should be modified. 
+
+import pandas as pd
+from scipy.stats import randint
+import matplotlib.pyplot as plt
+from sklearn.tree import DecisionTreeClassifier,export_graphviz
+from sklearn.model_selection import GridSearchCV, cross_val_score, train_test_split, RandomizedSearchCV
+from sklearn import tree
+from sklearn.metrics import accuracy_score
+from sklearn._config import get_config, set_config
+import numpy as np
+
+#Importing data sets for decision tree training and final classification. Adjust directories accordingly
+dataset_for_model_learning =pd.read_csv(r"\NDVI_for_model_training_JONAVA_2021.csv")
+data_for_classification =pd.read_csv(r"\NDVI_for_model_classification_JONAVA_2021.csv") 
 
 
+NDVI_values_for_training = dataset_for_model_learning.iloc[:,5:-1] #selecting only NDVI observations for training sample
+class_for_training = dataset_for_model_learning['klase'] #training sample by class feature
+NDVI_values_for_classification = data_for_classification.iloc[:,2:-2] #dataset is used for classification
+
+#training data set is split into datasets for training and testing. Testing sample size is 30% 
+NDVI_value_train, NDVI_value_test, class_value_train, class_value_test = train_test_split(NDVI_values_for_training, class_for_training, test_size=0.3)
+
+dt = DecisionTreeClassifier()
+dt = dt.fit(NDVI_value_train, class_value_train) #training DT
+class_predictions = dt.predict(NDVI_value_test) #testing trained DT against test datasets
+acc_DT = accuracy_score(class_value_test, class_predictions) #Getting accuracy score from the predictions 
+
+#search of best parameters - tailor DT model
+param_rs = {"max_depth": randint(1,5),
+            "max_features": randint(1, 23),
+            "min_samples_leaf": randint(1, 200),
+            "criterion": ["gini", "entropy"],
+            "min_samples_split": randint(200, 500),
+            "ccp_alpha" : [0.005]
+         }
+#looking for best parameters specified in list
+RS = RandomizedSearchCV(dt, param_rs, cv=5, n_iter=50)
 
 
+#optimised new DT model with new best parameters
+optimised_DT = RS.fit(NDVI_value_train, class_value_train)
+class_predictions_optimised = optimised_DT.predict(NDVI_value_test)
+acc_score_optimised_DT = accuracy_score(class_value_test, class_predictions_optimised)
+best_params = RS.best_params_ #getting best parameters for optimised DT
 
+#Classifying NDVI data set with optimised DT model 
+classification_optimised = optimised_DT.predict(NDVI_values_for_classification)
+classification_optimised_list = classification_optimised.tolist()
+
+#creating new csv file with predicted values 
+column_value = pd.Series(classification_optimised_list)
+data_for_classification.insert(loc=0, column='klase', value=column_value)
+data_for_classification.to_csv(r'\NDVI_for_model_classification_JONAVA_2021_classified.csv', index = None, header=True)
+
+#Tfurther is best parameter export to csv and visualisation of the tree
