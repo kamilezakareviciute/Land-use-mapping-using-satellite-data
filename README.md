@@ -40,6 +40,7 @@ Raster images are inspected for errors and cloud impacts. If inspection passed .
 #Data for decision tree model is located in zip "NDVI data for model". Location of the files should be modified. 
 
 import pandas as pd
+import os
 from scipy.stats import randint
 import matplotlib.pyplot as plt
 from sklearn.tree import DecisionTreeClassifier,export_graphviz
@@ -48,6 +49,13 @@ from sklearn import tree
 from sklearn.metrics import accuracy_score
 from sklearn._config import get_config, set_config
 import numpy as np
+
+#A total of 3 decision tree models are created for further analysis:
+#First - features NDVI from year 2021 and is used to classify landuse types in one town - Jonava only;
+#Second - features NDVI dataset that has been run trough Savitzky-Golay filter, that iliminates NDVI noise trough use of averages. Used to classify landuse types on one town Jonava in 2021;
+#Third - uses monthly NDVI values of 2021 Jonava. Is used to classify landuse types in two towns - Jonava and Kėdainiai in years 2021 and 2022. 
+
+#FIRST MODEL
 
 #Importing data sets for decision tree training and final classification. Adjust directories accordingly
 dataset_for_model_learning =pd.read_csv(r"\NDVI_for_model_training_JONAVA_2021.csv")
@@ -93,4 +101,37 @@ column_value = pd.Series(classification_optimised_list)
 data_for_classification.insert(loc=0, column='klase', value=column_value)
 data_for_classification.to_csv(r'\NDVI_for_model_classification_JONAVA_2021_classified.csv', index = None, header=True)
 
-#Tfurther is best parameter export to csv and visualisation of the tree
+#best parameter export to csv and visualisation of the tree
+scores = optimised_DT.cv_results_
+scores_dframe = pd.DataFrame(scores).sort_values('rank_test_score')
+scores_dframe.to_csv(r'X:\ArcGis Pro\Bakaluras_galutinis\bakalauras_1\Jonava_2021\Be_filtro\For GIT\NDVI for model\Optimised_DT_scores.csv', index = None, header=True) #adjust exoprt location
+
+#extracting only dates without extra information and class used to classify 
+class_names = ['vanduo', 'pieva', 'lapuociai','spygliuociai','infrastruktura']
+feature_names = ['2021_03_05', '2021_03_27', '2021_04_19','2021_04_21','2021_05_01','2021_05_11','2021_05_31'
+                ,'2021_06_10','2021_06_18','2021_06_20','2021_06_23','2021_06_30','2021_07_10'
+                ,'2021_07_15','2021_07_20','2021_07_25','2021_09_08','2021_09_11','2021_09_26'
+                ,'2021_10_06','2021_10_08','2021_10_11','2021_10_18'  
+                ]
+
+#visualising optimised decision tree with pyplot
+dt_visuals = RS.best_estimator_
+fig = plt.figure(figsize=(20,10)) 
+tree.plot_tree(dt_visuals, class_names=class_names,feature_names =feature_names, filled=True,fontsize=10)
+plt.show()
+
+#graphviz is required for graph export. Graphviz install https://graphviz.org/download/
+os.environ["PATH"] += os.pathsep + r'C:\Program Files\Graphviz\bin' #location of installed graphviz
+
+export_graphviz(dt_visuals, out_file='Classification_visualisation.dot',
+                feature_names=feature_names,
+                class_names=class_names,
+                filled=True, rounded=True, special_characters=True)
+!dot -Tpng Classification_visualisation.dot -o Classification_visualisation.png
+
+#SECOND MODEL 
+
+#Exact same principle as the fist one, only datasets for training and classification are different 
+
+#THIRD MODEL 
+
