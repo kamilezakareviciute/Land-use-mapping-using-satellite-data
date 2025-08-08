@@ -132,6 +132,14 @@ export_graphviz(dt_visuals, out_file='Classification_visualisation.dot',
 #SECOND MODEL 
 
 #Exact same principle as the fist one, only datasets for training and classification are different 
+#WILL ADD EXAMPLE FILES
 
-#THIRD MODEL 
+#THIRD MODEL - Uses less days for observations for classification aiming for middle of the month for best comperability between different years and observation areas (towns)
+
+monthly_NDVI_jonava_2021 =pd.read_csv(r'C:\NDVI_monthly_for_model_classification_Jonava_2021.csv')
+monthly_NDVI_for_training =pd.read_csv(r'\NDVI_monthly_for_model_training_JONAVA_2021.csv')
+monthly_NDVI_jonava_2021 = monthly_NDVI_jonava_2021.iloc[:,2:-2]
+monthly_NDVI_for_training = monthly_NDVI_for_training.iloc[:,5:-1]
+
+
 
